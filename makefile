@@ -13,14 +13,13 @@ EXEC_SCHEDULER := scheduler
 SRC_EVENT_LISTENER := cmd/event_listener/event_listener.go
 SRC_SCHEDULER := cmd/scheduler/scheduler.go
 
-GOOSE_DRIVER := 
+GOOSE_DRIVER := postgres
 GOOSE_DBHOST := 
 GOOSE_DBPORT := 
 GOOSE_DBNAME := 
 GOOSE_DBUSER := 
 GOOSE_DBPASSWORD := 
 GOOSE_DBSTRING := postgresql://$(GOOSE_DBNAME):$(GOOSE_DBPASSWORD)@$(GOOSE_DBHOST):$(GOOSE_DBPORT)/$(GOOSE_DBNAME)?sslmode=disable
-
 
 all: clean event_listener scheduler 
 
@@ -36,7 +35,7 @@ migrations_up:
 	goose -dir migrations $(GOOSE_DRIVER) $(GOOSE_DBSTRING) up
 
 migrations_down:
-	goose -dir migrations $(GOOSE_DRIVER) $(GOOSE_DBSTRING) up
+	goose -dir migrations $(GOOSE_DRIVER) $(GOOSE_DBSTRING) down
 
 docker-compose-up-silent: docker-compose-stop
 	sudo docker compose -f docker-compose.yml up -d
