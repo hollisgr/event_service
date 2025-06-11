@@ -1,0 +1,74 @@
+---
+
+services:
+  event_listener:
+    container_name: el-app
+    environment:
+      BIND_IP: "0.0.0.0"
+      LISTEN_PORT: "8080"
+      PSQL_HOST: "psql-es"
+      PSQL_PORT: "5432"
+      PSQL_NAME: ${DB_NAME}
+      PSQL_USER: ${DB_USER}
+      PSQL_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+    build:
+      context: ./
+      dockerfile: ./build/event_listener/Dockerfile
+    depends_on:
+      psql_es:
+        condition: service_healthy
+    ports: 
+      - "8181:8080"
+    networks:
+      - custom_network
+
+  scheduler:
+    container_name: s-app
+    environment:
+      PSQL_HOST: "psql-es"
+      PSQL_PORT: "5432"
+      PSQL_NAME: ${DB_NAME}
+      PSQL_USER: ${DB_USER}
+      PSQL_PASSWORD: ${DB_PASSWORD}
+      CHECK_EVENTS_SEC: ${CHECK_EVENTS_SEC}
+      SEND_MSG_SEC: ${SEND_MSG_SEC}
+      S_HOST: ${S_HOST}
+      S_TOKEN: ${S_TOKEN}
+    build:
+      context: ./
+      dockerfile: ./build/scheduler/Dockerfile
+    depends_on:
+      psql_es:
+        condition: service_healthy
+    ports: 
+      - "8001:8080"
+    networks:
+      - custom_network
+
+  psql_es:
+    image: postgres:16-alpine
+    container_name: psql-es
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - ./data:/var/lib/postgresql/data
+    ports:
+      - "25432:5432"
+    networks:
+      - custom_network
+
+
+networks:
+  custom_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.23.0.0/16
