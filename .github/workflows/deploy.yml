@@ -49,14 +49,4 @@ jobs:
         ssh-keyscan -H ${{ secrets.SSH_HOST }} > ~/.ssh/known_hosts
     - name: create docker compose config
       run: |
-        cat docker-compose.yml | envsubst > docker-compose-secret.yml
-    - name: copy docker compose config
-      run: scp docker-compose-secret.yml ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:docker-compose.yml
-    - name: connect and pull
-      run: ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "docker-compose pull && docker-compose up -d && exit"
-    - name: cleanup config
-      if: always()
-      run: ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "rm docker-compose.yml"
-    - name: cleanup keys
-      if: always()
-      run: rm -rf ~/.ssh docker-compose-secret.yml
+        docker compose up --build -d
