@@ -40,7 +40,7 @@ jobs:
             ssh-keyscan -H ${{ secrets.SSH_HOST }} > ~/.ssh/known_hosts
         - name: ssh
           if: always()
-          run: ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} |
+          run: ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} 
           cd event_service
           git checkout dev;
           git pull;
