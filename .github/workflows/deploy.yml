@@ -1,0 +1,29 @@
+name: deploy_event_service
+on:
+  push:
+    branches: [ "dev" ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Install Ruby and gems
+        uses: ruby/setup-ruby@ee2113536afb7f793eed4ce60e8d3b26db912da4 # v1.127.0
+        with:
+          bundler-cache: true
+      - name: Run command on remote server
+        uses: D3rHase/ssh-command-action@v0.2.2
+        with:
+          host: ${{secrets.SSH_HOST}}
+          user: ${{secrets.SSH_USER}}
+          private_key: ${{secrets.SSH_PRIVATE_KEY}}
+          command: |
+            cd event_service
+            git checkout dev;
+            git pull;
+            docker-compose --file docker-compose.prod.yml down;
+            docker-compose --file docker-compose.prod.yml up -d;
+            ~/go/bin goose -dir migrations "postgresql://${{secrets.PSQL_USERNAME}}:${{secrets.PSQL_PASSWORD}}@${{secrets.PSQL_HOST}}:${{secrets.PSQL_DBPORT}}/${{secrets.PSQL_DBNAME}}?sslmode=disable" up
