@@ -21,7 +21,7 @@ jobs:
           S_TOKEN: ${{secrets.S_TOKEN}}
           CHECK_EVENTS_SEC: 10
           SEND_MSG_SEC: 5
-          JWT_SECRET_KEY: ${{secrets.JWT_SECRET_KEY}}"> .env
+          JWT_SECRET_KEY: ${{secrets.JWT_SECRET_KEY}}" > .env
     - name: create docker compose config
       run: |
         docker compose up -d --build
