@@ -13,7 +13,7 @@ EXEC_SCHEDULER := scheduler
 SRC_EVENT_LISTENER := cmd/event_listener/event_listener.go
 SRC_SCHEDULER := cmd/scheduler/scheduler.go
 
-GOOSE_DRIVER := postgres
+GOOSE_DRIVER := 
 GOOSE_DBHOST := 
 GOOSE_DBPORT := 
 GOOSE_DBNAME := 
@@ -28,7 +28,6 @@ event_listener: clean_event_listener build_event_listener
 scheduler: clean_scheduler build_scheduler
 
 goose_install:
-	export PATH=$(PATH):home/$(USER)/go/bin/
 	go install $(GOOSE)
 
 migrations_up:
