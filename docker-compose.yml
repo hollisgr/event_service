@@ -20,8 +20,6 @@ services:
         condition: service_healthy
     ports: 
       - "8181:8080"
-    networks:
-      - custom_network
 
   scheduler:
     container_name: s-app
@@ -43,8 +41,6 @@ services:
         condition: service_healthy
     ports: 
       - "8001:8080"
-    networks:
-      - custom_network
 
   psql_es:
     image: postgres:16-alpine
@@ -62,13 +58,3 @@ services:
       - ./data:/var/lib/postgresql/data
     ports:
       - "25432:5432"
-    networks:
-      - custom_network
-
-
-networks:
-  custom_network:
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 10.23.0.0/16
