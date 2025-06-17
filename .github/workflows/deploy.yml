@@ -4,25 +4,46 @@ on:
     branches: [ "dev" ]
 
 jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-      - name: Install Ruby and gems
-        uses: ruby/setup-ruby@ee2113536afb7f793eed4ce60e8d3b26db912da4 # v1.127.0
-        with:
-          bundler-cache: true
-      - name: Run command on remote server
-        uses: D3rHase/ssh-command-action@v0.2.2
-        with:
-          host: ${{secrets.SSH_HOST}}
-          user: ${{secrets.SSH_USER}}
-          private_key: ${{secrets.SSH_PRIVATE_KEY}}
-          command: |
-              cd event_service
-              git checkout dev;
-              git pull;
-              docker-compose --file docker-compose.prod.yml down;
-              docker-compose --file docker-compose.prod.yml up -d;
-              ~/go/bin goose -dir migrations "postgresql://${{secrets.PSQL_USERNAME}}:${{secrets.PSQL_PASSWORD}}@${{secrets.PSQL_HOST}}:${{secrets.PSQL_DBPORT}}/${{secrets.PSQL_DBNAME}}?sslmode=disable" up
+#   deploy:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v3
+#       - name: Install Ruby and gems
+#         uses: ruby/setup-ruby@ee2113536afb7f793eed4ce60e8d3b26db912da4 # v1.127.0
+#         with:
+#           bundler-cache: true
+#       - name: Run command on remote server
+#         uses: D3rHase/ssh-command-action@v0.2.2
+#         with:
+#           host: ${{secrets.SSH_HOST}}
+#           user: ${{secrets.SSH_USER}}
+#           private_key: ${{secrets.SSH_PRIVATE_KEY}}
+#           command: |
+#               cd event_service
+#               git checkout dev;
+#               git pull;
+#               docker-compose --file docker-compose.prod.yml down;
+#               docker-compose --file docker-compose.prod.yml up -d;
+#               ~/go/bin goose -dir migrations "postgresql://${{secrets.PSQL_USERNAME}}:${{secrets.PSQL_PASSWORD}}@${{secrets.PSQL_HOST}}:${{secrets.PSQL_DBPORT}}/${{secrets.PSQL_DBNAME}}?sslmode=disable" up
+
+ deploy:
+        name: Deploy
+        runs-on: ubuntu-latest
+
+        steps:
+        - uses: actions/checkout@v4
+        - name: install ssh keys
+          run: |
+            install -m 600 -D /dev/null ~/.ssh/id_rsa
+            echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+            ssh-keyscan -H ${{ secrets.SSH_HOST }} > ~/.ssh/known_hosts
+        - name: ssh
+          if: always()
+          run: ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} |
+          cd event_service
+          git checkout dev;
+          git pull;
+          docker-compose --file docker-compose.prod.yml down;
+          docker-compose --file docker-compose.prod.yml up -d;
+          ~/go/bin goose -dir migrations "postgresql://${{secrets.PSQL_USERNAME}}:${{secrets.PSQL_PASSWORD}}@${{secrets.PSQL_HOST}}:${{secrets.PSQL_DBPORT}}/${{secrets.PSQL_DBNAME}}?sslmode=disable" up
