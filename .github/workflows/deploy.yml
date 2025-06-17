@@ -1,9 +1,9 @@
-name: deploy_event_service
-on:
-  push:
-    branches: [ "dev" ]
+# name: deploy_event_service
+# on:
+#   push:
+#     branches: [ "dev" ]
 
-jobs:
+# jobs:
 #   deploy:
 #     runs-on: ubuntu-latest
 #     steps:
@@ -27,23 +27,36 @@ jobs:
 #               docker-compose --file docker-compose.prod.yml up -d;
 #               ~/go/bin goose -dir migrations "postgresql://${{secrets.PSQL_USERNAME}}:${{secrets.PSQL_PASSWORD}}@${{secrets.PSQL_HOST}}:${{secrets.PSQL_DBPORT}}/${{secrets.PSQL_DBNAME}}?sslmode=disable" up
 
- deploy:
-        name: Deploy
-        runs-on: ubuntu-latest
+name: deploy
 
-        steps:
-        - uses: actions/checkout@v4
-        - name: install ssh keys
-          run: |
-            install -m 600 -D /dev/null ~/.ssh/id_rsa
-            echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-            ssh-keyscan -H ${{ secrets.SSH_HOST }} > ~/.ssh/known_hosts
-        - name: ssh
-          if: always()
-          run: ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} 
-          cd event_service
-          git checkout dev;
-          git pull;
-          docker-compose --file docker-compose.prod.yml down;
-          docker-compose --file docker-compose.prod.yml up -d;
-          ~/go/bin goose -dir migrations "postgresql://${{secrets.PSQL_USERNAME}}:${{secrets.PSQL_PASSWORD}}@${{secrets.PSQL_HOST}}:${{secrets.PSQL_DBPORT}}/${{secrets.PSQL_DBNAME}}?sslmode=disable" up
+on:
+  push:
+    branches: [ "dev" ]
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: install ssh keys
+      # check this thread to understand why its needed:
+      # <https://stackoverflow.com/a/70447517>
+      run: |
+        install -m 600 -D /dev/null ~/.ssh/id_rsa
+        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+        ssh-keyscan -H ${{ secrets.SSH_HOST }} > ~/.ssh/known_hosts
+    - name: create docker compose config
+      run: |
+        cat docker-compose.yml | envsubst > docker-compose-secret.yml
+    - name: copy docker compose config
+      run: scp docker-compose-secret.yml ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:docker-compose.yml
+    - name: connect and pull
+      run: ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "docker-compose pull && docker-compose up -d && exit"
+    - name: cleanup config
+      if: always()
+      run: ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "rm docker-compose.yml"
+    - name: cleanup keys
+      if: always()
+      run: rm -rf ~/.ssh docker-compose-secret.yml
