@@ -40,13 +40,17 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    - name: install ssh keys
-      # check this thread to understand why its needed:
-      # <https://stackoverflow.com/a/70447517>
+    - name: Environment Var Init
       run: |
-        install -m 600 -D /dev/null ~/.ssh/id_rsa
-        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-        ssh-keyscan -H ${{ secrets.SSH_HOST }} > ~/.ssh/known_hosts
+        echo "
+          DB_NAME=${{secrets.PSQL_DBNAME}}
+          DB_USER=${{secrets.PSQL_USERNAME}}
+          DB_PASSWORD=${{secrets.PSQL_PASSWORD}}
+          S_HOST=asdasd
+          S_TOKEN=asdasd
+          CHECK_EVENTS_SEC=10
+          SEND_MSG_SEC=5
+          JWT_SECRET_KEY=asdasd"> .env
     - name: create docker compose config
       run: |
         docker compose up --build -d
