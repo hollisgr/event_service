@@ -7,16 +7,18 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
+     - name: Checkout repository
+        uses: actions/checkout@v4
       - name: Run command on remote server
         uses: D3rHase/ssh-command-action@v0.2.2
         with:
-          host: ${{deploy.SSH_HOST}}
-          user: ${{deploy.SSH_USER}}
-          private_key: ${{deploy.SSH_PRIVATE_KEY}}
+          host: ${{secrets.SSH_HOST}}
+          user: ${{secrets.SSH_USER}}
+          private_key: ${{secrets.SSH_PRIVATE_KEY}}
           command: |
             cd event_service
             git checkout dev;
             git pull;
             docker-compose --file docker-compose.prod.yml down;
             docker-compose --file docker-compose.prod.yml up -d;
-            ~/go/bin goose -dir migrations "postgresql://${{deploy.PSQL_USERNAME}}:${{deploy.PSQL_PASSWORD}}@${{deploy.PSQL_HOST}}:${{deploy.PSQL_DBPORT}}/${{deploy.PSQL_DBNAME}}?sslmode=disable" up
+            ~/go/bin goose -dir migrations "postgresql://${{secrets.PSQL_USERNAME}}:${{secrets.PSQL_PASSWORD}}@${{secrets.PSQL_HOST}}:${{secrets.PSQL_DBPORT}}/${{secrets.PSQL_DBNAME}}?sslmode=disable" up
