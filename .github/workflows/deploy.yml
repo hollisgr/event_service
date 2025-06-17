@@ -24,6 +24,5 @@ jobs:
           JWT_SECRET_KEY=${{secrets.JWT_SECRET_KEY}}"> .env
     - name: create docker compose config
       run: |
-        docker compose up --build -d psql_es
+        docker compose up --build -d
         ~/go/bin goose -dir migrations "postgresql://${{secrets.PSQL_USERNAME}}:${{secrets.PSQL_PASSWORD}}@${{secrets.PSQL_HOST}}:${{secrets.PSQL_DBPORT}}/${{secrets.PSQL_DBNAME}}?sslmode=disable" up
-        docker compose up --build -d 
