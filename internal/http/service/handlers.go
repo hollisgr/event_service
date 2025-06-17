@@ -35,6 +35,11 @@ func (h *handler_service) Register(r *gin.Engine) {
 }
 
 func (h *handler_service) GetAuthToken(c *gin.Context) {
+	auth := c.GetHeader("Authorization")
+	if auth != "Bearer "+h.cfg.Scheduler.Token {
+		c.JSON(http.StatusUnauthorized, gin.H{"status": "unauthorized", "access": "denied"})
+		return
+	}
 	token := CreateToken(h.cfg.JwtSecretKey)
 	c.JSON(http.StatusOK, gin.H{"status": "OK", "access token": token})
 }
