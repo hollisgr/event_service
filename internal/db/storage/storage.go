@@ -13,6 +13,7 @@ type Storage interface {
 	EventSetStatus(ctx context.Context, event_id int, status string) error
 
 	PipelineSave(ctx context.Context, p pipeline.Pipeline) (int, error)
+	PipelineLoad(ctx context.Context, pipeline_id int) (pipeline.Pipeline, error)
 	PipelinesLoad(ctx context.Context) ([]pipeline.Pipeline, error)
 	PipelineSetStatus(ctx context.Context, pipeline_id int, status string) error
 	PipelineIncreaseSendCounter(ctx context.Context, pipeline_id int) error

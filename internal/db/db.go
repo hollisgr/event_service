@@ -28,6 +28,28 @@ func NewStorage(client postgres.Client, logger *logger.Logger) storage.Storage {
 	}
 }
 
+func (r *repository) PipelineLoad(ctx context.Context, pipeline_id int) (pipeline.Pipeline, error) {
+	var pipeline pipeline.Pipeline
+	query := `
+	SELECT 
+		id,
+		parent_id,
+		event_id,
+		user_id,
+		template_id,
+		status,
+		created_at
+	FROM pipelines
+	WHERE id = $1
+	`
+	row := r.client.QueryRow(ctx, query, pipeline_id)
+	err := row.Scan(&pipeline.Id, &pipeline.ParentId, &pipeline.EventId, &pipeline.UserId, &pipeline.TemplateId, &pipeline.Status, &pipeline.CreatedAt)
+	if err != nil {
+		return pipeline, err
+	}
+	return pipeline, nil
+}
+
 func (r *repository) PipelinesLoad(ctx context.Context) ([]pipeline.Pipeline, error) {
 	query := `
 	SELECT 

@@ -1,6 +1,7 @@
 package scheduler
 
 import (
+	"context"
 	"event_service/internal/cfg"
 	"event_service/internal/db/storage"
 	"event_service/internal/pipeline/pipeline_interface"
@@ -39,7 +40,7 @@ func (s *Scheduler) InitScheduler() error {
 		gocron.DurationJob(
 			time.Duration(s.cfg.Scheduler.CheckEventsTimeOutSec)*time.Second,
 		),
-		gocron.NewTask(s.pipelineService.CheckPipelines),
+		gocron.NewTask(s.PlanningPipelines),
 	)
 	if err != nil {
 		log.Println("cant create new job")
@@ -58,25 +59,33 @@ func (s *Scheduler) StopScheduler() {
 	log.Println("Scheduler stopped!")
 }
 
-func (s *Scheduler) PlanningPipeline(pipelineId int, delay int) error {
-	log.Println("Planning pipeline id:", pipelineId)
+func (s *Scheduler) PlanningPipelines() {
 
-	_, err := s.scheduler.NewJob(
-		gocron.OneTimeJob(
-			gocron.OneTimeJobStartDateTime(time.Now().Add(time.Duration(delay)*time.Second)),
-		),
-		gocron.NewTask(
-			func() {
-				err := s.pipelineService.ExecutePipeline(pipelineId)
-				if err != nil {
-					log.Println(err)
-					return
-				}
-			},
-		),
-	)
+	dtoArr, err := s.pipelineService.CheckPipelines()
+
 	if err != nil {
-		return err
+		return
 	}
-	return nil
+
+	for _, dto := range dtoArr {
+		if dto.Pipeline.Status == "new" {
+			s.storage.PipelineSetStatus(context.Background(), dto.Pipeline.Id, "planned")
+			log.Println("Planning pipeline id:", dto.Pipeline.Id)
+			s.scheduler.NewJob(
+				gocron.OneTimeJob(
+					gocron.OneTimeJobStartDateTime(time.Now().Add(time.Duration(dto.PipelineTemplate.ExecuteDelay)*time.Second)),
+				),
+				gocron.NewTask(
+					func() {
+						err := s.pipelineService.ExecutePipeline(dto)
+						if err != nil {
+							log.Println(err)
+							return
+						}
+					},
+				),
+			)
+		}
+	}
+
 }

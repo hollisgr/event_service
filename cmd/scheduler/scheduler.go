@@ -34,7 +34,7 @@ func main() {
 
 	storage := db.NewStorage(pgxPool, logger)
 
-	pipelineService := pipeline.NewPipelineService(storage)
+	pipelineService := pipeline.NewPipelineService(storage, *cfg)
 
 	s := scheduler.NewScheduler(storage, cfg, pipelineService)
 

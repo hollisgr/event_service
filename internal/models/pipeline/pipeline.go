@@ -5,16 +5,18 @@ import (
 	"time"
 )
 
+type Query struct {
+	CohortName string `json:"cohort_name"`
+	Message    string `json:"message"`
+	Image      string `json:"image"`
+	Delay      int    `json:"delay"`
+}
+
 type PipelineTemplate struct {
-	Id         int
-	EventName  string
-	Conditions event.Event
-	Query      struct {
-		CohortName string
-		Message    string
-		Image      string
-		Delay      int
-	}
+	Id               int
+	EventName        string
+	Conditions       event.Event
+	Query            Query
 	ExitPipelineName string
 	NextPipelineId   int
 	ExecuteDelay     int

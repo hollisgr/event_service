@@ -1,7 +1,9 @@
 package pipeline_interface
 
+import "event_service/internal/dto"
+
 type Pipeline interface {
 	InitPipelineTemplates()
-	CheckPipelines() error
-	ExecutePipeline(pipelineId int) error
+	CheckPipelines() ([]dto.PipelineDTO, error)
+	ExecutePipeline(dto.PipelineDTO) error
 }
