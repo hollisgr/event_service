@@ -15,13 +15,23 @@ CREATE TABLE events (
     user_properties JSONB,
     uuid VARCHAR(100),
     version_name VARCHAR(100),
-    is_sended BOOL DEFAULT FALSE,
-    is_planned BOOL DEFAULT FALSE,
-    sending_attempts INTEGER DEFAULT 0
+    status VARCHAR(100)
+);
+
+CREATE TABLE pipelines (
+    id SERIAL PRIMARY KEY,
+    parent_id INTEGER,
+    event_id INTEGER,
+    user_id VARCHAR(100),
+    template_id INTEGER,
+    sending_counter INTEGER,
+    status VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
 DROP TABLE IF EXISTS events
+DROP TABLE IF EXISTS pipelines
 -- +goose StatementEnd

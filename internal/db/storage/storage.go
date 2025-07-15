@@ -2,14 +2,18 @@ package storage
 
 import (
 	"context"
-	"event_service/internal/dto"
 	"event_service/internal/models/event"
+	"event_service/internal/models/pipeline"
 )
 
 type Storage interface {
-	Save(ctx context.Context, e event.Event) (int, error)
-	LoadEvents(ctx context.Context) ([]dto.FromDbToMessagesDTO, error)
-	IncreaseEventSendCounter(ctx context.Context, event_id int) error
-	MarkEventIsPlanned(ctx context.Context, event_id int) error
-	MarkEventIsSended(ctx context.Context, event_id int) error
+	EventSave(ctx context.Context, e event.Event) (int, error)
+	EventsLoadNew(ctx context.Context) ([]event.Event, error)
+	EventLoad(ctx context.Context, event_id int) (event.Event, error)
+	EventSetStatus(ctx context.Context, event_id int, status string) error
+
+	PipelineSave(ctx context.Context, p pipeline.Pipeline) (int, error)
+	PipelinesLoad(ctx context.Context) ([]pipeline.Pipeline, error)
+	PipelineSetStatus(ctx context.Context, pipeline_id int, status string) error
+	PipelineIncreaseSendCounter(ctx context.Context, pipeline_id int) error
 }

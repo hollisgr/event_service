@@ -4,7 +4,7 @@ import (
 	"context"
 	"event_service/internal/cfg"
 	"event_service/internal/db"
-	"event_service/internal/http/service"
+	"event_service/internal/listener/handler_service"
 	"event_service/pkg/logger"
 	"event_service/pkg/postgres"
 	"log"
@@ -39,7 +39,7 @@ func main() {
 
 	storage := db.NewStorage(pgxPool, logger)
 
-	handler := service.NewHandler(storage, cfg, validate)
+	handler := handler_service.NewHandler(storage, cfg, validate)
 
 	handler.Register(r)
 
