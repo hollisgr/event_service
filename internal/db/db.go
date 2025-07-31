@@ -38,12 +38,13 @@ func (r *repository) PipelineLoad(ctx context.Context, pipeline_id int) (pipelin
 		user_id,
 		template_id,
 		status,
-		created_at
+		created_at,
+		sending_counter
 	FROM pipelines
 	WHERE id = $1
 	`
 	row := r.client.QueryRow(ctx, query, pipeline_id)
-	err := row.Scan(&pipeline.Id, &pipeline.ParentId, &pipeline.EventId, &pipeline.UserId, &pipeline.TemplateId, &pipeline.Status, &pipeline.CreatedAt)
+	err := row.Scan(&pipeline.Id, &pipeline.ParentId, &pipeline.EventId, &pipeline.UserId, &pipeline.TemplateId, &pipeline.Status, &pipeline.CreatedAt, &pipeline.SendingCounter)
 	if err != nil {
 		return pipeline, err
 	}
@@ -292,4 +293,91 @@ func (r *repository) EventSetStatus(ctx context.Context, event_id int, status st
 	}
 
 	return nil
+}
+
+func (r *repository) PipelineTemplateSave(ctx context.Context, data pipeline.PipelineTemplateDTO) (int, error) {
+	id := 0
+	conditionsBytes, err := json.Marshal(data.Conditions)
+	if err != nil {
+		return id, fmt.Errorf("failed to marshall tempalate conditions")
+	}
+
+	queryBytes, err := json.Marshal(data.Query)
+	if err != nil {
+		return id, fmt.Errorf("failed to marshall template query")
+	}
+	query := `
+			INSERT INTO pipeline_templates (
+				event_name,
+				conditions,
+				query,
+				exit_pipeline_name,
+				next_pipeline_id,
+				execute_delay,
+				is_active
+			)
+			VALUES ($1, $2, $3, $4, $5, $6, $7)
+			RETURNING id
+			`
+	// r.logger.Traceln("SQL Query:", formatQuery(query))
+	r.client.QueryRow(ctx, query, data.EventName, conditionsBytes, queryBytes, data.ExitPipelineName, data.NextPipelineId, data.ExecuteDelay, data.IsActive).Scan(&id)
+	if id == 0 {
+		return id, fmt.Errorf("pipeline template save error")
+	}
+	return id, nil
+}
+
+func (r *repository) PipelineTemplatesLoad(ctx context.Context) ([]pipeline.PipelineTemplateDTO, error) {
+	query := `
+	SELECT 
+		id,
+		event_name,
+		conditions,
+		query,
+		exit_pipeline_name,
+		next_pipeline_id,
+		execute_delay,
+		is_active
+	FROM pipeline_templates
+	`
+	rows, err := r.client.Query(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+
+	tArr := make([]pipeline.PipelineTemplateDTO, 0)
+
+	for rows.Next() {
+		t := pipeline.PipelineTemplateDTO{}
+
+		err = rows.Scan(&t.Id, &t.EventName, &t.Conditions, &t.Query, &t.ExitPipelineName, &t.NextPipelineId, &t.ExecuteDelay, &t.IsActive)
+		if err != nil {
+			return nil, err
+		}
+		tArr = append(tArr, t)
+	}
+	return tArr, nil
+}
+
+func (r *repository) PipelineTemplateLoad(ctx context.Context, templateId int) (pipeline.PipelineTemplate, error) {
+	var tempalate pipeline.PipelineTemplate
+	query := `
+	SELECT 
+		id,
+		event_name,
+		conditions,
+		query,
+		exit_pipeline_name,
+		next_pipeline_id,
+		execute_delay,
+		is_active
+	FROM pipeline_templates
+	WHERE id = $1
+	`
+	row := r.client.QueryRow(ctx, query, templateId)
+	err := row.Scan(&tempalate.Id, &tempalate.EventName, &tempalate.Conditions, &tempalate.Query, &tempalate.ExitPipelineName, &tempalate.NextPipelineId, &tempalate.ExecuteDelay, &tempalate.IsActive)
+	if err != nil {
+		return tempalate, err
+	}
+	return tempalate, nil
 }

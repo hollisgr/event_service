@@ -13,14 +13,14 @@ type Query struct {
 }
 
 type PipelineTemplate struct {
-	Id               int
-	EventName        string
-	Conditions       event.Event
-	Query            Query
-	ExitPipelineName string
-	NextPipelineId   int
-	ExecuteDelay     int
-	IsActive         bool
+	Id               int         `json:"id"`
+	EventName        string      `json:"event_name"`
+	Conditions       event.Event `json:"conditions"`
+	Query            Query       `json:"query"`
+	ExitPipelineName string      `json:"exit_pipeline_name"`
+	NextPipelineId   int         `json:"next_pipeline_id"`
+	ExecuteDelay     int         `json:"execute_delay"`
+	IsActive         bool        `json:"is_active"`
 }
 
 type Pipeline struct {
@@ -32,4 +32,24 @@ type Pipeline struct {
 	Status         string
 	SendingCounter int
 	CreatedAt      time.Time
+}
+
+type PipelineTemplateDTO struct {
+	Id               int            `json:"id"`
+	EventName        string         `json:"event_name"`
+	Conditions       map[string]any `json:"conditions"`
+	Query            map[string]any `json:"query"`
+	ExitPipelineName string         `json:"exit_pipeline_name"`
+	NextPipelineId   int            `json:"next_pipeline_id"`
+	ExecuteDelay     int            `json:"execute_delay"`
+	IsActive         bool           `json:"is_active"`
+}
+
+func EmptyQuery() Query {
+	return Query{
+		CohortName: "null",
+		Message:    "null",
+		Image:      "null",
+		Delay:      0,
+	}
 }

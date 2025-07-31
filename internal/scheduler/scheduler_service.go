@@ -4,6 +4,7 @@ import (
 	"context"
 	"event_service/internal/cfg"
 	"event_service/internal/db/storage"
+	"event_service/internal/dto"
 	"event_service/internal/pipeline/pipeline_interface"
 	"event_service/internal/scheduler/scheduler_interface"
 	"log"
@@ -59,11 +60,29 @@ func (s *Scheduler) StopScheduler() {
 	log.Println("Scheduler stopped!")
 }
 
+func (s *Scheduler) NewJobExecutePipeline(dto dto.PipelineDTO, timeout int) {
+	s.scheduler.NewJob(
+		gocron.OneTimeJob(
+			gocron.OneTimeJobStartDateTime(time.Now().Add(time.Duration(timeout)*time.Second)),
+		),
+		gocron.NewTask(
+			func() {
+				err := s.pipelineService.ExecutePipeline(dto)
+				if err != nil {
+					log.Println(err)
+					return
+				}
+			},
+		),
+	)
+}
+
 func (s *Scheduler) PlanningPipelines() {
 
 	dtoArr, err := s.pipelineService.CheckPipelines()
 
 	if err != nil {
+		log.Println("have no available pipelines")
 		return
 	}
 
@@ -71,21 +90,9 @@ func (s *Scheduler) PlanningPipelines() {
 		if dto.Pipeline.Status == "new" {
 			s.storage.PipelineSetStatus(context.Background(), dto.Pipeline.Id, "planned")
 			log.Println("Planning pipeline id:", dto.Pipeline.Id)
-			s.scheduler.NewJob(
-				gocron.OneTimeJob(
-					gocron.OneTimeJobStartDateTime(time.Now().Add(time.Duration(dto.PipelineTemplate.ExecuteDelay)*time.Second)),
-				),
-				gocron.NewTask(
-					func() {
-						err := s.pipelineService.ExecutePipeline(dto)
-						if err != nil {
-							log.Println(err)
-							return
-						}
-					},
-				),
-			)
+			s.NewJobExecutePipeline(dto, dto.PipelineTemplate.ExecuteDelay)
+		} else {
+			s.NewJobExecutePipeline(dto, cfg.GetConfig().Scheduler.SendMessageTimeOutSec)
 		}
 	}
-
 }

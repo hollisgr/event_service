@@ -24,10 +24,23 @@ CREATE TABLE pipelines (
     event_id INTEGER,
     user_id VARCHAR(100),
     template_id INTEGER,
-    sending_counter INTEGER,
+    sending_counter INTEGER DEFAULT 0,
     status VARCHAR(100),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE pipeline_templates (
+    id SERIAL PRIMARY KEY,
+    event_name TEXT,
+    conditions JSONB,
+    query JSONB,
+    exit_pipeline_name TEXT,
+    next_pipeline_id INTEGER,
+    execute_delay INTEGER,
+    is_active BOOLEAN
+);
+
+
 -- +goose StatementEnd
 
 -- +goose Down

@@ -6,6 +6,7 @@ import (
 	"event_service/internal/db/storage"
 	"event_service/internal/listener/handler_interface"
 	"event_service/internal/models/event"
+	"event_service/internal/models/pipeline"
 	"event_service/pkg/logger"
 	"fmt"
 	"net/http"
@@ -32,11 +33,40 @@ func NewHandler(s storage.Storage, cfg *cfg.Cfg, validate *validator.Validate) h
 
 func (h *handler_service) Register(r *gin.Engine) {
 	r.Use(AuthMiddleware(h.cfg.Token))
-	r.POST("/events", h.Event)
+	r.POST("/events", h.SaveEvent)
 	r.GET("/events", h.GetEvents)
+	r.POST("/pipeline_templates", h.SavePipelineTemplate)
+	r.GET("/pipeline_templates", h.GetPipelineTemplates)
 }
 
-func (h *handler_service) Event(c *gin.Context) {
+func (h *handler_service) GetPipelineTemplates(c *gin.Context) {
+
+	templates, err := h.storage.PipelineTemplatesLoad(context.Background())
+
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"status": "database error", "message": fmt.Sprintf("%v", err)})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": "success", "pipeline_templates": templates})
+}
+
+func (h *handler_service) SavePipelineTemplate(c *gin.Context) {
+	var newTemplate pipeline.PipelineTemplateDTO
+	err := c.BindJSON(&newTemplate)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"status": "bad request", "message": "req body data is incorrect"})
+		return
+	}
+	id, err := h.storage.PipelineTemplateSave(context.Background(), newTemplate)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"status": "bad request", "message": err})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"status": "success", "pipeline_template id": id})
+}
+
+func (h *handler_service) SaveEvent(c *gin.Context) {
 
 	newEvent := event.NewEvent()
 
