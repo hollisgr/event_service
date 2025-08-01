@@ -23,19 +23,6 @@ type EventWithPipeline struct {
 	PipeLineId int
 }
 
-func NewEvent() Event {
-	return Event{
-		DeviceCarrier: "null",
-		DeviceFamily:  "null",
-		DeviceId:      "null",
-		DeviceType:    "null",
-		DisplayName:   "null",
-		DMA:           "null",
-		EventId:       0,
-		Status:        "new",
-	}
-}
-
 func EmptyEvent() Event {
 	return Event{
 		DeviceCarrier:   "null",

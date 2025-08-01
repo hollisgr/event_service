@@ -68,7 +68,7 @@ func (h *handler_service) SavePipelineTemplate(c *gin.Context) {
 
 func (h *handler_service) SaveEvent(c *gin.Context) {
 
-	newEvent := event.NewEvent()
+	newEvent := event.EmptyEvent()
 
 	err := c.BindJSON(&newEvent)
 	if err != nil {

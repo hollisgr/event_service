@@ -89,34 +89,15 @@ func (p *PipelineService) CheckConditions(e event.Event) (pipeline.PipelineTempl
 	return template, ok
 }
 
-// func (p *PipelineService) checkConditions(e event.Event) (dto.PipelineDTO, bool) {
-// 	dto := dto.PipelineDTO{}
-// 	log.Printf("checking event: %d", e.EventId)
-// 	ok := false
-
-// 	for _, template := range p.pipelineTemplates {
-// 		if template.EventName == e.EventType {
-// 			ok_counter := 0
-// 			t_reflect := reflect.ValueOf(template.Conditions.UserProperties)
-// 			t_keys := t_reflect.MapKeys()
-// 			for _, t_key := range t_keys {
-// 				t_key_name := t_key.String()
-// 				t_key_value := t_reflect.MapIndex(t_key).Interface()
-// 				if e.UserProperties[t_key_name] != t_key_value {
-// 					ok_counter++
-// 				}
-// 			}
-// 			if ok_counter == 0 {
-// 				dto.PipelineTemplate = template
-// 				ok = true
-// 			}
-// 		}
-// 	}
-// 	p.storage.EventSetStatus(context.Background(), e.EventId, "checked")
-// 	log.Printf("event %d status updated", e.EventId)
-// 	return dto, ok
-// }
-
+// CheckPlanned checks for planned pipelines in the storage and appends them to the provided slice of PipelineDTO.
+// It logs the beginning of the check and counts the number of planned pipelines with a SendingCounter less than 3.
+// If no planned pipelines are found, it logs a message indicating that there are no planned pipelines.
+//
+// Parameters:
+//   - dtoArr: A pointer to a slice of PipelineDTO where the found planned pipelines will be appended.
+//
+// Returns:
+//   - This function does not return a value. It modifies the provided dtoArr slice directly.
 func (p *PipelineService) CheckPlanned(dtoArr *[]dto.PipelineDTO) {
 	log.Println("planned pipelines check begins...")
 	counter := 0
@@ -141,6 +122,18 @@ func (p *PipelineService) CheckPlanned(dtoArr *[]dto.PipelineDTO) {
 	}
 }
 
+// NewPipeline creates a new pipeline based on the provided event and pipeline template.
+// It initializes the pipeline with the event ID, user ID, template ID, and sets the status to "new".
+// The new pipeline is saved to the storage, and if there is a next pipeline template,
+// it recursively creates the next pipeline using the same event and the next template.
+//
+// Parameters:
+// - e: An event.Event object containing details about the event.
+// - t: A pipeline.PipelineTemplate object representing the template for the new pipeline.
+// - dtoArr: A pointer to a slice of dto.PipelineDTO where the created pipeline DTO will be appended.
+//
+// Returns:
+// - This function does not return a value. It modifies the dtoArr slice to include the new pipeline DTO.
 func (p *PipelineService) NewPipeline(e event.Event, t pipeline.PipelineTemplate, dtoArr *[]dto.PipelineDTO) {
 	log.Printf("pipeline condition ok, event id: %d, pipeline template: %d", e.EventId, t.Id)
 	newPipeline := pipeline.Pipeline{
@@ -168,6 +161,18 @@ func (p *PipelineService) NewPipeline(e event.Event, t pipeline.PipelineTemplate
 	}
 }
 
+// ExecutePipeline executes a pipeline based on the provided PipelineDTO.
+// It loads the pipeline from storage and checks the sending counter and status.
+// If the sending counter is 3 or more, or if the status is "cancelled",
+// it returns an error. If checks pass, it increments the sending counter,
+// prepares an HTTP request to the scheduler with the pipeline template query,
+// and sends the request. Finally, it updates the pipeline status to "finished".
+//
+// Parameters:
+//   - dto: A PipelineDTO containing the details of the pipeline to execute.
+//
+// Returns:
+//   - An error if any step fails; otherwise, returns nil.
 func (p *PipelineService) ExecutePipeline(dto dto.PipelineDTO) error {
 
 	pipeline, err := p.storage.PipelineLoad(context.Background(), dto.Pipeline.Id)
@@ -224,6 +229,11 @@ func (p *PipelineService) ExecutePipeline(dto dto.PipelineDTO) error {
 	return nil
 }
 
+// InitPipelineTemplates initializes the pipeline templates by loading them from the storage.
+// It retrieves the pipeline templates, and for each template, it creates a corresponding
+// PipelineTemplate object by unmarshalling the conditions and query from JSON bytes.
+// If there is an error during the loading process, it logs an error message and exits the function.
+// The initialized templates are then appended to the pipelineTemplates slice of the PipelineService.
 func (p *PipelineService) InitPipelineTemplates() {
 	pipelineTemplatesArr, err := p.storage.PipelineTemplatesLoad(context.Background())
 	if err != nil {
@@ -270,7 +280,6 @@ func (p *PipelineService) CompareConditions(t, e map[string]any) bool {
 				case map[string]any:
 					evMap, ok := evVal.(map[string]any)
 					if !ok {
-
 						return false
 					}
 					if !p.CompareConditions(vTyped, evMap) {
@@ -293,70 +302,3 @@ func (p *PipelineService) EventToMap(e event.Event) map[string]any {
 	json.Unmarshal(e_data, &e_map)
 	return e_map
 }
-
-// func (p *PipelineService) InitPipelineTemplates() {
-
-// 	pipelineTemplatesArr := make([]pipeline.PipelineTemplate, 0)
-
-// 	newUserEvent := event.EmptyEvent()
-// 	newUserEvent.UserProperties["status"] = "buyer"
-// 	newUserEvent.UserProperties["language_code"] = "ru"
-
-// 	newUser := pipeline.PipelineTemplate{
-// 		Id:         1,
-// 		EventName:  "new_user",
-// 		Conditions: newUserEvent,
-// 		Query: pipeline.Query{
-// 			CohortName: "GH-349-from-new_user-to-start_webapp_message-1",
-// 			Message:    "<b>Привет, друг!</b> Рады что ты с нами. Не забудь обменять свои денежки. Тем более что с нами это сделать <u>супер удобно!</u> Множество способов получения и оплаты, удобный и стильный интерфейс и разнообразие курсов! Жми <b>«♻️ Начать обмен»</b>",
-// 			Image:      "https://i.ibb.co/3s0Rzjy/Frame-354.png",
-// 			Delay:      1,
-// 		},
-// 		ExitPipelineName: "start_webapp",
-// 		NextPipelineId:   2,
-// 		ExecuteDelay:     10,
-// 		IsActive:         true,
-// 	}
-
-// 	pipelineTemplatesArr = append(pipelineTemplatesArr, newUser)
-
-// 	newUserEvent2 := event.EmptyEvent()
-
-// 	newUser2 := pipeline.PipelineTemplate{
-// 		Id:         2,
-// 		EventName:  "",
-// 		Conditions: newUserEvent2,
-// 		Query: pipeline.Query{
-// 			CohortName: "GH-349-from-new_user-to-start_webapp_message-2",
-// 			Message:    "😢 - это наши партнеры в ожидании тебя, друг. Каждый из них готов помочь тебе осуществить мечту. Сделай первый шаг - Жми <b>«♻️ Начать обмен»</b>",
-// 			Delay:      1,
-// 		},
-// 		ExitPipelineName: "start_webapp",
-// 		NextPipelineId:   3,
-// 		ExecuteDelay:     6300,
-// 		IsActive:         true,
-// 	}
-
-// 	pipelineTemplatesArr = append(pipelineTemplatesArr, newUser2)
-
-// 	newUserEvent3 := event.EmptyEvent()
-
-// 	newUser3 := pipeline.PipelineTemplate{
-// 		Id:         3,
-// 		EventName:  "",
-// 		Conditions: newUserEvent3,
-// 		Query: pipeline.Query{
-// 			CohortName: "GH-349-from-new_user-to-start_webapp_message-2",
-// 			Message:    "<b>Время - деньги.</b> Не теряй деньги, отправь запрос на обмен и получи наличку уже сейчас. Жми <b>«♻️ Начать обмен»</b>!\nВ случае, если есть дополнительные вопросы напишите нам @yeloo_support",
-// 			Image:      "https://i.ibb.co/LPff9wv/Frame-303.png",
-// 			Delay:      1,
-// 		},
-// 		ExitPipelineName: "start_webapp",
-// 		ExecuteDelay:     79200,
-// 		IsActive:         true,
-// 	}
-
-// 	pipelineTemplatesArr = append(pipelineTemplatesArr, newUser3)
-
-// 	p.pipelineTemplates = pipelineTemplatesArr
-// }
