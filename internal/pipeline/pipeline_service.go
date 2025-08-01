@@ -18,11 +18,12 @@ import (
 )
 
 type PipelineService struct {
-	pipelineTemplates []pipeline.PipelineTemplate
-	storage           storage.Storage
-	cfg               cfg.Cfg
+	pipelineTemplates []pipeline.PipelineTemplate // Array of pipeline templates
+	storage           storage.Storage             // Interface for data storage
+	cfg               cfg.Cfg                     // Configuration settings
 }
 
+// Creates a new instance of the PipelineService object and initializes its internal structures.
 func NewPipelineService(s storage.Storage, cfg cfg.Cfg) pipeline_interface.Pipeline {
 	var p PipelineService
 	p.storage = s
@@ -31,6 +32,10 @@ func NewPipelineService(s storage.Storage, cfg cfg.Cfg) pipeline_interface.Pipel
 	return &p
 }
 
+// CheckPipelines verifies the state of existing pipelines and processes new events.
+// It retrieves new events from storage, checks conditions for creating new pipelines,
+// generates appropriate pipeline records, and updates current operations' statuses.
+// Returns a list of processed pipelines and possible error.
 func (p *PipelineService) CheckPipelines() ([]dto.PipelineDTO, error) {
 	log.Println("pipeline check begins...")
 	counter := 0
@@ -55,6 +60,10 @@ func (p *PipelineService) CheckPipelines() ([]dto.PipelineDTO, error) {
 	return dtoArr, nil
 }
 
+// CheckCancelState examines whether any active pipelines should be cancelled based on incoming events.
+// It iterates over all stored pipelines, comparing their user IDs with the event's user ID.
+// If a matching pipeline exists and its exit condition matches the event type, the pipeline's status is set to 'cancelled'.
+// No value is returned since it's intended purely for side effects.
 func (p *PipelineService) CheckCancelState(e event.Event) {
 	pArr, _ := p.storage.PipelinesLoad(context.Background())
 	for _, pipeline := range pArr {
@@ -68,6 +77,11 @@ func (p *PipelineService) CheckCancelState(e event.Event) {
 	}
 }
 
+// CheckConditions determines whether an event meets the conditions for starting a pipeline.
+// It compares the event type with available pipeline templates and checks if the event satisfies the specified conditions.
+// Returns a matched pipeline template along with a boolean indicating success.
+// If no suitable template is found, an empty template and false are returned.
+// Additionally, sets the event status to "checked" after processing.
 func (p *PipelineService) CheckConditions(e event.Event) (pipeline.PipelineTemplate, bool) {
 	template := pipeline.PipelineTemplate{}
 	log.Printf("checking event: %d", e.EventId)
@@ -266,6 +280,11 @@ func (p *PipelineService) InitPipelineTemplates() {
 	}
 }
 
+// CompareConditions recursively compares two maps to determine if an event satisfies given conditions.
+// It walks through the keys of the first map ('t') and ensures they exist in the second map ('e')
+// and have equivalent values according to DeepEqual comparison.
+// Nested maps are handled recursively, ensuring deep equality between nested key-value pairs.
+// Returns true if all conditions are met; otherwise, returns false.
 func (p *PipelineService) CompareConditions(t, e map[string]any) bool {
 	empty_map := p.EventToMap(event.EmptyEvent())
 	for k, v := range t {
@@ -296,6 +315,10 @@ func (p *PipelineService) CompareConditions(t, e map[string]any) bool {
 	return true
 }
 
+// EventToMap converts an event into a generic map representation.
+// It marshals the event into JSON format and then unmarshals it back into a map[string]interface{},
+// allowing easy access to event properties as a dynamic structure.
+// Any unmarshaling errors are ignored, assuming valid input.
 func (p *PipelineService) EventToMap(e event.Event) map[string]any {
 	e_data, _ := json.Marshal(e)
 	e_map := make(map[string]any)

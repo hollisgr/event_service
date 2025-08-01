@@ -22,6 +22,9 @@ type handler_service struct {
 	validate *validator.Validate
 }
 
+// NewHandler creates a new handler instance.
+// It takes dependencies like storage, configuration, and validator, and initializes a Logger.
+// Returns a concrete implementation of the Handler interface.
 func NewHandler(s storage.Storage, cfg *cfg.Cfg, validate *validator.Validate) handler_interface.Handler {
 	return &handler_service{
 		logger:   logger.GetLogger(),
@@ -31,6 +34,8 @@ func NewHandler(s storage.Storage, cfg *cfg.Cfg, validate *validator.Validate) h
 	}
 }
 
+// Register registers routes for the web server using Gin framework.
+// Adds middleware for authentication and defines endpoints for saving and retrieving events/pipeline templates.
 func (h *handler_service) Register(r *gin.Engine) {
 	r.Use(AuthMiddleware(h.cfg.Token))
 	r.POST("/events", h.SaveEvent)
@@ -39,6 +44,9 @@ func (h *handler_service) Register(r *gin.Engine) {
 	r.GET("/pipeline_templates", h.GetPipelineTemplates)
 }
 
+// GetPipelineTemplates fetches all pipeline templates from storage.
+// On success, responds with a list of pipeline templates.
+// On database error, returns Bad Request response with error details.
 func (h *handler_service) GetPipelineTemplates(c *gin.Context) {
 
 	templates, err := h.storage.PipelineTemplatesLoad(context.Background())
@@ -51,6 +59,9 @@ func (h *handler_service) GetPipelineTemplates(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": "success", "pipeline_templates": templates})
 }
 
+// SavePipelineTemplate saves a new pipeline template to storage.
+// Binds JSON payload to PipelineTemplateDTO, validates, and stores it.
+// Responds with the saved pipeline template's ID on success, or bad request error on validation/database issues.
 func (h *handler_service) SavePipelineTemplate(c *gin.Context) {
 	var newTemplate pipeline.PipelineTemplateDTO
 	err := c.BindJSON(&newTemplate)
@@ -66,6 +77,9 @@ func (h *handler_service) SavePipelineTemplate(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": "success", "pipeline_template id": id})
 }
 
+// SaveEvent persists a new event in storage.
+// Validates the event data and saves it.
+// Responds with the saved event's ID on success, or error messages on validation or database problems.
 func (h *handler_service) SaveEvent(c *gin.Context) {
 
 	newEvent := event.EmptyEvent()
@@ -93,6 +107,9 @@ func (h *handler_service) SaveEvent(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": "success", "event id": eventId})
 }
 
+// GetEvents retrieves all new events from storage.
+// On success, returns a list of events.
+// On database error, returns Bad Request response with error details.
 func (h *handler_service) GetEvents(c *gin.Context) {
 
 	events, err := h.storage.EventsLoadNew(context.Background())

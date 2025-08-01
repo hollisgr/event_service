@@ -21,6 +21,8 @@ func formatQuery(q string) string {
 	return strings.ReplaceAll(strings.ReplaceAll(q, "\t", ""), "\n", " ")
 }
 
+// NewStorage creates a new instance of repository implementing the storage.Storage interface.
+// It takes a PostgreSQL client and a logger as parameters and returns a pointer to the repository struct.
 func NewStorage(client postgres.Client, logger *logger.Logger) storage.Storage {
 	return &repository{
 		client: client,
@@ -28,6 +30,10 @@ func NewStorage(client postgres.Client, logger *logger.Logger) storage.Storage {
 	}
 }
 
+// PipelineLoad retrieves a single pipeline record from the database by its unique identifier.
+// It uses SQL query to fetch the pipeline data from the 'pipelines' table where the primary key equals the provided pipeline_id.
+// Scans the resulting row into a Pipeline struct and returns it along with any encountered errors.
+// If no pipeline is found or other database errors occur, the error is propagated upwards.
 func (r *repository) PipelineLoad(ctx context.Context, pipeline_id int) (pipeline.Pipeline, error) {
 	var pipeline pipeline.Pipeline
 	query := `
@@ -51,6 +57,11 @@ func (r *repository) PipelineLoad(ctx context.Context, pipeline_id int) (pipelin
 	return pipeline, nil
 }
 
+// PipelinesLoad retrieves all pipeline records from the database.
+// Executes a SELECT query on the 'pipelines' table without filters, fetching all columns.
+// Each retrieved row is scanned into a Pipeline struct, which is appended to a slice.
+// Returns a slice containing all pipelines and any encountered errors.
+// If no results are found or database errors occur, the error is propagated upward.
 func (r *repository) PipelinesLoad(ctx context.Context) ([]pipeline.Pipeline, error) {
 	query := `
 	SELECT 
@@ -83,6 +94,10 @@ func (r *repository) PipelinesLoad(ctx context.Context) ([]pipeline.Pipeline, er
 	return pipelineArr, nil
 }
 
+// PipelineSetStatus updates the status field of a pipeline identified by its unique ID.
+// Uses an UPDATE statement to change the status column of the corresponding entry in the 'pipelines' table.
+// Verifies the update was successful by scanning the affected pipeline ID back from the RETURNING clause.
+// Returns an error if the operation failed or if the pipeline wasn't properly updated.
 func (r *repository) PipelineSetStatus(ctx context.Context, pipeline_id int, status string) error {
 	query := `
 	UPDATE 
@@ -102,6 +117,10 @@ func (r *repository) PipelineSetStatus(ctx context.Context, pipeline_id int, sta
 	return nil
 }
 
+// PipelineSave inserts a new pipeline record into the database.
+// Constructs an INSERT query to add a new entry to the 'pipelines' table, populating parent_id, event_id, user_id, template_id, and status fields.
+// Retrieves the generated pipeline ID using the RETURNING clause and scans it into the pipelineId variable.
+// Returns the inserted pipeline ID and an error if insertion fails.
 func (r *repository) PipelineSave(ctx context.Context, p pipeline.Pipeline) (int, error) {
 	pipelineId := 0
 
@@ -124,6 +143,10 @@ func (r *repository) PipelineSave(ctx context.Context, p pipeline.Pipeline) (int
 	return pipelineId, nil
 }
 
+// PipelineIncreaseSendCounter increments the send counter for a pipeline identified by its unique ID.
+// Performs an atomic update operation, increasing the 'sending_counter' field by 1.
+// Confirms the update by scanning the pipeline ID back from the RETURNING clause.
+// Returns an error if the update fails or if the pipeline isn't properly updated.
 func (r *repository) PipelineIncreaseSendCounter(ctx context.Context, pipeline_id int) error {
 	query := `
 	UPDATE 
@@ -145,6 +168,11 @@ func (r *repository) PipelineIncreaseSendCounter(ctx context.Context, pipeline_i
 	return nil
 }
 
+// EventSave inserts a new event record into the database.
+// Serializes event and user properties to JSON bytes and includes them in the INSERT query.
+// Populates multiple fields of the 'events' table, returning the auto-generated event ID.
+// Handles serialization errors and reports them appropriately.
+// Returns the event ID and an error if insertion fails.
 func (r *repository) EventSave(ctx context.Context, e event.Event) (int, error) {
 	eventId := 0
 
@@ -192,6 +220,11 @@ func (r *repository) EventSave(ctx context.Context, e event.Event) (int, error) 
 	return eventId, nil
 }
 
+// EventsLoadNew retrieves all new events from the database.
+// Executes a SELECT query to fetch events whose status is marked as 'new', selecting various event attributes.
+// Deserializes JSON-encoded event and user properties into structured types.
+// Returns a slice of Event structs and any encountered errors.
+// If no results are found or database errors occur, the error is propagated upward.
 func (r *repository) EventsLoadNew(ctx context.Context) ([]event.Event, error) {
 	query := `
 	SELECT 
@@ -241,6 +274,10 @@ func (r *repository) EventsLoadNew(ctx context.Context) ([]event.Event, error) {
 	return eventArr, nil
 }
 
+// EventLoad retrieves a single event record from the database by its unique identifier.
+// Executes a SELECT query to fetch the event details from the 'events' table where the primary key matches the provided event_id.
+// Scans the resulting row into an Event struct and returns it along with any encountered errors.
+// If no event is found or other database errors occur, the error is propagated upward.
 func (r *repository) EventLoad(ctx context.Context, event_id int) (event.Event, error) {
 	query := `
 	SELECT
@@ -275,6 +312,10 @@ func (r *repository) EventLoad(ctx context.Context, event_id int) (event.Event, 
 	return e, nil
 }
 
+// EventSetStatus updates the status of an event identified by its unique ID.
+// Issues an UPDATE query to modify the status column of the corresponding entry in the 'events' table.
+// Verifies the update was successful by scanning the event ID back from the RETURNING clause.
+// Returns an error if the operation failed or if the event wasn't properly updated.
 func (r *repository) EventSetStatus(ctx context.Context, event_id int, status string) error {
 	query := `
 	UPDATE 
@@ -296,6 +337,11 @@ func (r *repository) EventSetStatus(ctx context.Context, event_id int, status st
 	return nil
 }
 
+// PipelineTemplateSave inserts a new pipeline template into the database.
+// Marshals conditions and query data into JSON byte arrays and includes them in the INSERT query.
+// Inserts a new entry into the 'pipeline_templates' table, capturing the autogenerated template ID.
+// Reports marshaling errors or insertion failures explicitly.
+// Returns the template ID and an error if insertion fails.
 func (r *repository) PipelineTemplateSave(ctx context.Context, data pipeline.PipelineTemplateDTO) (int, error) {
 	id := 0
 	conditionsBytes, err := json.Marshal(data.Conditions)
@@ -328,6 +374,11 @@ func (r *repository) PipelineTemplateSave(ctx context.Context, data pipeline.Pip
 	return id, nil
 }
 
+// PipelineTemplatesLoad retrieves all pipeline templates from the database.
+// Executes a SELECT query to fetch all entries from the 'pipeline_templates' table.
+// Each row is scanned into a PipelineTemplateDTO struct and appended to a slice.
+// Returns a slice of PipelineTemplateDTO instances and any encountered errors.
+// If no results are found or database errors occur, the error is propagated upward.
 func (r *repository) PipelineTemplatesLoad(ctx context.Context) ([]pipeline.PipelineTemplateDTO, error) {
 	query := `
 	SELECT 
@@ -360,6 +411,10 @@ func (r *repository) PipelineTemplatesLoad(ctx context.Context) ([]pipeline.Pipe
 	return tArr, nil
 }
 
+// PipelineTemplateLoad retrieves a single pipeline template from the database by its unique identifier.
+// It selects all relevant fields from the 'pipeline_templates' table where the primary key matches the provided templateId.
+// Scans the resulting row into a PipelineTemplate struct and returns it along with any encountered errors.
+// If no template is found or other database errors occur, the error is propagated upward.
 func (r *repository) PipelineTemplateLoad(ctx context.Context, templateId int) (pipeline.PipelineTemplate, error) {
 	var tempalate pipeline.PipelineTemplate
 	query := `
