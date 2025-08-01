@@ -60,7 +60,8 @@ func (r *repository) PipelinesLoad(ctx context.Context) ([]pipeline.Pipeline, er
 		user_id,
 		template_id,
 		status,
-		created_at
+		created_at,
+		sending_counter
 	FROM pipelines
 	`
 	rows, err := r.client.Query(ctx, query)
@@ -73,7 +74,7 @@ func (r *repository) PipelinesLoad(ctx context.Context) ([]pipeline.Pipeline, er
 	for rows.Next() {
 		tempPipeline := pipeline.Pipeline{}
 
-		err = rows.Scan(&tempPipeline.Id, &tempPipeline.ParentId, &tempPipeline.EventId, &tempPipeline.UserId, &tempPipeline.TemplateId, &tempPipeline.Status, &tempPipeline.CreatedAt)
+		err = rows.Scan(&tempPipeline.Id, &tempPipeline.ParentId, &tempPipeline.EventId, &tempPipeline.UserId, &tempPipeline.TemplateId, &tempPipeline.Status, &tempPipeline.CreatedAt, &tempPipeline.SendingCounter)
 		if err != nil {
 			return nil, err
 		}
@@ -105,16 +106,16 @@ func (r *repository) PipelineSave(ctx context.Context, p pipeline.Pipeline) (int
 	pipelineId := 0
 
 	query := `
-			INSERT INTO pipelines (
-				parent_id,
-				event_id,
-				user_id,
-				template_id,
-				status
-			)
-			VALUES ($1, $2, $3, $4, $5)
-			RETURNING id
-			`
+	INSERT INTO pipelines (
+		parent_id,
+		event_id,
+		user_id,
+		template_id,
+		status
+	)
+	VALUES ($1, $2, $3, $4, $5)
+	RETURNING id
+	`
 	// r.logger.Traceln("SQL Query:", formatQuery(query))
 	r.client.QueryRow(ctx, query, p.ParentId, p.EventId, p.UserId, p.TemplateId, p.Status).Scan(&pipelineId)
 	if pipelineId == 0 {
@@ -158,26 +159,26 @@ func (r *repository) EventSave(ctx context.Context, e event.Event) (int, error) 
 	}
 
 	query := `
-			INSERT INTO events (
-				device_carrier, 
-				device_family, 
-				device_id, 
-				device_type, 
-				display_name, 
-				dma, 
-				event_id, 
-				event_properties,
-				event_time, 
-				event_type, 
-				user_id, 
-				user_properties,
-				uuid, 
-				version_name,
-				status
-			)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-			RETURNING event_id
-			`
+	INSERT INTO events (
+		device_carrier,
+		device_family,
+		device_id,
+		device_type,
+		display_name,
+		dma,
+		event_id,
+		event_properties,
+		event_time,
+		event_type,
+		user_id,
+		user_properties,
+		uuid,
+		version_name,
+		status
+	)
+	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+	RETURNING event_id
+	`
 	// r.logger.Traceln("SQL Query:", formatQuery(query))
 	r.client.QueryRow(ctx, query,
 		e.DeviceCarrier, e.DeviceFamily, e.DeviceId,
@@ -242,24 +243,24 @@ func (r *repository) EventsLoadNew(ctx context.Context) ([]event.Event, error) {
 
 func (r *repository) EventLoad(ctx context.Context, event_id int) (event.Event, error) {
 	query := `
-		SELECT 
-			device_carrier,
-			device_family,
-			device_id ,
-			device_type,
-			display_name,
-			dma,
-			event_id,
-			event_time,
-			event_type,
-			user_id,
-			uuid,
-			version_name,
-			status
-		FROM
-			events
-		WHERE event_id = $1
-		`
+	SELECT
+		device_carrier,
+		device_family,
+		device_id ,
+		device_type,
+		display_name,
+		dma,
+		event_id,
+		event_time,
+		event_type,
+		user_id,
+		uuid,
+		version_name,
+		status
+	FROM
+		events
+	WHERE event_id = $1
+	`
 	e := event.Event{}
 	row := r.client.QueryRow(ctx, query, event_id)
 	err := row.Scan(
@@ -307,18 +308,18 @@ func (r *repository) PipelineTemplateSave(ctx context.Context, data pipeline.Pip
 		return id, fmt.Errorf("failed to marshall template query")
 	}
 	query := `
-			INSERT INTO pipeline_templates (
-				event_name,
-				conditions,
-				query,
-				exit_pipeline_name,
-				next_pipeline_id,
-				execute_delay,
-				is_active
-			)
-			VALUES ($1, $2, $3, $4, $5, $6, $7)
-			RETURNING id
-			`
+	INSERT INTO pipeline_templates (
+		event_name,
+		conditions,
+		query,
+		exit_pipeline_name,
+		next_pipeline_id,
+		execute_delay,
+		is_active
+	)
+	VALUES ($1, $2, $3, $4, $5, $6, $7)
+	RETURNING id
+	`
 	// r.logger.Traceln("SQL Query:", formatQuery(query))
 	r.client.QueryRow(ctx, query, data.EventName, conditionsBytes, queryBytes, data.ExitPipelineName, data.NextPipelineId, data.ExecuteDelay, data.IsActive).Scan(&id)
 	if id == 0 {
