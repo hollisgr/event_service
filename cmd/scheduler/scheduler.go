@@ -4,6 +4,7 @@ import (
 	"context"
 	"event_service/internal/cfg"
 	"event_service/internal/db"
+	"event_service/internal/executor"
 	"event_service/internal/pipeline"
 	"event_service/internal/scheduler"
 	"event_service/pkg/logger"
@@ -34,7 +35,9 @@ func main() {
 
 	storage := db.NewStorage(pgxPool, logger)
 
-	pipelineService := pipeline.NewPipelineService(storage, *cfg)
+	exec := executor.NewExecutor()
+
+	pipelineService := pipeline.NewPipelineService(storage, *cfg, exec)
 
 	s := scheduler.NewScheduler(storage, cfg, pipelineService)
 

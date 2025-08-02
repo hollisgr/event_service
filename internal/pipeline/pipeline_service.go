@@ -1,19 +1,17 @@
 package pipeline
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"event_service/internal/cfg"
 	"event_service/internal/db/storage"
 	"event_service/internal/dto"
+	"event_service/internal/executor/executor_interface"
 	"event_service/internal/models/event"
 	"event_service/internal/models/pipeline"
 	"event_service/internal/pipeline/pipeline_interface"
 	"fmt"
-	"io"
 	"log"
-	"net/http"
 	"reflect"
 )
 
@@ -21,14 +19,16 @@ type PipelineService struct {
 	pipelineTemplates []pipeline.PipelineTemplate // Array of pipeline templates
 	storage           storage.Storage             // Interface for data storage
 	cfg               cfg.Cfg                     // Configuration settings
+	executor          executor_interface.Executor
 }
 
 // Creates a new instance of the PipelineService object and initializes its internal structures.
-func NewPipelineService(s storage.Storage, cfg cfg.Cfg) pipeline_interface.Pipeline {
+func NewPipelineService(s storage.Storage, cfg cfg.Cfg, e executor_interface.Executor) pipeline_interface.Pipeline {
 	var p PipelineService
 	p.storage = s
 	p.cfg = cfg
 	p.InitPipelineTemplates()
+	p.executor = e
 	return &p
 }
 
@@ -175,18 +175,9 @@ func (p *PipelineService) NewPipeline(e event.Event, t pipeline.PipelineTemplate
 	}
 }
 
-// ExecutePipeline executes a pipeline based on the provided PipelineDTO.
-// It loads the pipeline from storage and checks the sending counter and status.
-// If the sending counter is 3 or more, or if the status is "cancelled",
-// it returns an error. If checks pass, it increments the sending counter,
-// prepares an HTTP request to the scheduler with the pipeline template query,
-// and sends the request. Finally, it updates the pipeline status to "finished".
-//
-// Parameters:
-//   - dto: A PipelineDTO containing the details of the pipeline to execute.
-//
-// Returns:
-//   - An error if any step fails; otherwise, returns nil.
+// ExecutePipeline executes a pipeline after checking its state and limits.
+// Sends the task to an executor, updates counters and finishes the pipeline on success.
+// Returns errors in case of loading issues, exceeded retries, cancellation, or execution failures.
 func (p *PipelineService) ExecutePipeline(dto dto.PipelineDTO) error {
 
 	pipeline, err := p.storage.PipelineLoad(context.Background(), dto.Pipeline.Id)
@@ -206,40 +197,16 @@ func (p *PipelineService) ExecutePipeline(dto dto.PipelineDTO) error {
 
 	log.Println("execute pipeline, id :", pipeline.Id, "counter: ", pipeline.SendingCounter)
 
+	err = p.executor.Send(dto)
+
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
 	p.storage.PipelineIncreaseSendCounter(context.Background(), pipeline.Id)
 
-	c := http.Client{}
-	reqAddr := p.cfg.Scheduler.Host
-	reqBody, err := json.Marshal(dto.PipelineTemplate.Query)
-	if err != nil {
-		return err
-	}
-
-	token := "Bearer " + p.cfg.Token
-
-	req, err := http.NewRequest("POST", reqAddr, bytes.NewReader(reqBody))
-
-	if err != nil {
-		return err
-	}
-
-	req.Header.Set("Authorization", token)
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := c.Do(req)
-
-	if err != nil {
-		return err
-	}
-
-	respByte, err := io.ReadAll(resp.Body)
-
-	if err != nil {
-		return err
-	}
-
 	p.storage.PipelineSetStatus(context.Background(), pipeline.Id, "finished")
-	log.Println(string(respByte))
 	return nil
 }
 
