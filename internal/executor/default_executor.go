@@ -6,6 +6,7 @@ import (
 	"event_service/internal/cfg"
 	"event_service/internal/dto"
 	"event_service/internal/executor/executor_interface"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -20,6 +21,7 @@ func NewDefaultExecutor() executor_interface.Executor {
 }
 
 func (e *Executor) Send(dto dto.PipelineDTO) error {
+	dto.PipelineTemplate.Query["user_id"] = dto.Pipeline.UserId
 	cfg := cfg.GetConfig()
 	c := http.Client{}
 	reqAddr := cfg.Scheduler.Host
@@ -51,5 +53,14 @@ func (e *Executor) Send(dto dto.PipelineDTO) error {
 		return err
 	}
 	log.Println(string(respByte))
+
+	r := make(map[string]any, 0)
+
+	json.Unmarshal(respByte, &r)
+
+	if r["success"] == false {
+		return fmt.Errorf("send_err")
+	}
+
 	return nil
 }

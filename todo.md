@@ -5,3 +5,4 @@
 - structs to map[string]any - done
 - implement execute method to pipeline -done
 - executor factory - done
+- handling errors (if success false make it send_err) - in progress (need test)
