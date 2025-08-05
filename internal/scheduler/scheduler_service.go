@@ -114,10 +114,13 @@ func (s *Scheduler) PlanningPipelines() {
 	for _, dto := range dtoArr {
 		if dto.Pipeline.Status == "new" {
 			s.storage.PipelineSetStatus(context.Background(), dto.Pipeline.Id, "planned")
-			log.Println("Planning pipeline id:", dto.Pipeline.Id)
+			log.Println("Planning new pipeline id:", dto.Pipeline.Id, "delay: ", dto.PipelineTemplate.ExecuteDelay)
 			s.NewJobExecutePipeline(dto, dto.PipelineTemplate.ExecuteDelay)
-		} else {
-			s.NewJobExecutePipeline(dto, cfg.GetConfig().Scheduler.SendMessageTimeOutSec)
+		}
+		if dto.Pipeline.Status == "send_err" {
+			timeout := cfg.GetConfig().Scheduler.SendMessageTimeOutSec
+			s.NewJobExecutePipeline(dto, timeout)
+			log.Println("Re-planning pipeline id:", dto.Pipeline.Id, "delay: ", timeout)
 		}
 	}
 }

@@ -18,7 +18,7 @@ type Storage interface {
 	PipelineSetStatus(ctx context.Context, pipeline_id int, status string) error
 	PipelineIncreaseSendCounter(ctx context.Context, pipeline_id int) error
 
-	PipelineTemplateSave(ctx context.Context, data pipeline.PipelineTemplateDTO) (int, error)
-	PipelineTemplatesLoad(ctx context.Context) ([]pipeline.PipelineTemplateDTO, error)
+	PipelineTemplateSave(ctx context.Context, data pipeline.PipelineTemplate) (int, error)
+	PipelineTemplatesLoad(ctx context.Context) ([]pipeline.PipelineTemplate, error)
 	PipelineTemplateLoad(ctx context.Context, templateId int) (pipeline.PipelineTemplate, error)
 }

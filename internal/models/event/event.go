@@ -18,11 +18,6 @@ type Event struct {
 	Status          string         `json:"status"`
 }
 
-type EventWithPipeline struct {
-	EventId    int
-	PipeLineId int
-}
-
 func EmptyEvent() Event {
 	return Event{
 		DeviceCarrier:   "null",

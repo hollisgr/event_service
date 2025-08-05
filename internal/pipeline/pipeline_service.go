@@ -6,7 +6,7 @@ import (
 	"event_service/internal/cfg"
 	"event_service/internal/db/storage"
 	"event_service/internal/dto"
-	"event_service/internal/executor/executor_interface"
+	"event_service/internal/factory"
 	"event_service/internal/models/event"
 	"event_service/internal/models/pipeline"
 	"event_service/internal/pipeline/pipeline_interface"
@@ -19,16 +19,14 @@ type PipelineService struct {
 	pipelineTemplates []pipeline.PipelineTemplate // Array of pipeline templates
 	storage           storage.Storage             // Interface for data storage
 	cfg               cfg.Cfg                     // Configuration settings
-	executor          executor_interface.Executor
 }
 
 // Creates a new instance of the PipelineService object and initializes its internal structures.
-func NewPipelineService(s storage.Storage, cfg cfg.Cfg, e executor_interface.Executor) pipeline_interface.Pipeline {
+func NewPipelineService(s storage.Storage, cfg cfg.Cfg) pipeline_interface.Pipeline {
 	var p PipelineService
 	p.storage = s
 	p.cfg = cfg
 	p.InitPipelineTemplates()
-	p.executor = e
 	return &p
 }
 
@@ -53,7 +51,7 @@ func (p *PipelineService) CheckPipelines() ([]dto.PipelineDTO, error) {
 		}
 		p.CheckCancelState(event)
 	}
-	p.CheckPlanned(&dtoArr)
+	p.CheckSended(&dtoArr)
 	if counter == 0 {
 		log.Println("have no new pipelines!")
 	}
@@ -71,7 +69,7 @@ func (p *PipelineService) CheckCancelState(e event.Event) {
 			t, _ := p.storage.PipelineTemplateLoad(context.Background(), pipeline.TemplateId)
 			if t.ExitPipelineName == e.EventType {
 				p.storage.PipelineSetStatus(context.Background(), pipeline.Id, "cancelled")
-				log.Println("canceling pipeline with id: ", pipeline.Id)
+				log.Println("cancel pipeline with id: ", pipeline.Id)
 			}
 		}
 	}
@@ -90,8 +88,8 @@ func (p *PipelineService) CheckConditions(e event.Event) (pipeline.PipelineTempl
 	for _, t := range p.pipelineTemplates {
 		if e.EventType == t.EventName {
 			e_map := p.EventToMap(e)
-			t_map := p.EventToMap(t.Conditions)
-			ok = p.CompareConditions(t_map, e_map)
+			ok = p.CompareConditions(t.Conditions, e_map)
+			log.Println("name ok", e.EventId)
 		}
 		if ok {
 			template = t
@@ -112,7 +110,7 @@ func (p *PipelineService) CheckConditions(e event.Event) (pipeline.PipelineTempl
 //
 // Returns:
 //   - This function does not return a value. It modifies the provided dtoArr slice directly.
-func (p *PipelineService) CheckPlanned(dtoArr *[]dto.PipelineDTO) {
+func (p *PipelineService) CheckSended(dtoArr *[]dto.PipelineDTO) {
 	log.Println("planned pipelines check begins...")
 	counter := 0
 	pArr, err := p.storage.PipelinesLoad(context.Background())
@@ -121,7 +119,7 @@ func (p *PipelineService) CheckPlanned(dtoArr *[]dto.PipelineDTO) {
 	}
 
 	for _, pipeline := range pArr {
-		if pipeline.Status == "planned" && pipeline.SendingCounter < 3 {
+		if pipeline.Status == "send_err" && pipeline.SendingCounter < 3 {
 			counter++
 			t, _ := p.storage.PipelineTemplateLoad(context.Background(), pipeline.TemplateId)
 			tempDTO := dto.PipelineDTO{
@@ -190,6 +188,7 @@ func (p *PipelineService) ExecutePipeline(dto dto.PipelineDTO) error {
 		err = fmt.Errorf("cant exec pipeline, sending counter >= 3")
 		return err
 	}
+
 	if pipeline.Status == "cancelled" {
 		err = fmt.Errorf("cant exec pipeline, status == cancelled")
 		return err
@@ -197,54 +196,31 @@ func (p *PipelineService) ExecutePipeline(dto dto.PipelineDTO) error {
 
 	log.Println("execute pipeline, id :", pipeline.Id, "counter: ", pipeline.SendingCounter)
 
-	err = p.executor.Send(dto)
+	e := factory.ExecutorFactory(dto.PipelineTemplate.ExecuteType)
+
+	p.storage.PipelineIncreaseSendCounter(context.Background(), pipeline.Id)
+
+	err = e.Send(dto)
 
 	if err != nil {
 		log.Println(err)
+		p.storage.PipelineSetStatus(context.Background(), pipeline.Id, "send_err")
 		return err
 	}
-
-	p.storage.PipelineIncreaseSendCounter(context.Background(), pipeline.Id)
 
 	p.storage.PipelineSetStatus(context.Background(), pipeline.Id, "finished")
 	return nil
 }
 
-// InitPipelineTemplates initializes the pipeline templates by loading them from the storage.
-// It retrieves the pipeline templates, and for each template, it creates a corresponding
-// PipelineTemplate object by unmarshalling the conditions and query from JSON bytes.
-// If there is an error during the loading process, it logs an error message and exits the function.
-// The initialized templates are then appended to the pipelineTemplates slice of the PipelineService.
+// InitPipelineTemplates initializes pipeline templates by loading them from storage.
+// In case of failure during template loading, logs an error message but does not return any value.
 func (p *PipelineService) InitPipelineTemplates() {
-	pipelineTemplatesArr, err := p.storage.PipelineTemplatesLoad(context.Background())
+	templates, err := p.storage.PipelineTemplatesLoad(context.Background())
 	if err != nil {
 		log.Println("init pipeline templates err, cant load templates")
 		return
 	}
-
-	for _, t := range pipelineTemplatesArr {
-		tempEvent := event.EmptyEvent()
-		tempQuery := pipeline.EmptyQuery()
-
-		conditionsBytes, _ := json.Marshal(t.Conditions)
-		queryBytes, _ := json.Marshal(t.Query)
-
-		json.Unmarshal(conditionsBytes, &tempEvent)
-		json.Unmarshal(queryBytes, &tempQuery)
-
-		tempTemplate := pipeline.PipelineTemplate{
-			Id:               t.Id,
-			EventName:        t.EventName,
-			Conditions:       tempEvent,
-			Query:            tempQuery,
-			ExitPipelineName: t.ExitPipelineName,
-			NextPipelineId:   t.NextPipelineId,
-			ExecuteDelay:     t.ExecuteDelay,
-			IsActive:         t.IsActive,
-		}
-
-		p.pipelineTemplates = append(p.pipelineTemplates, tempTemplate)
-	}
+	p.pipelineTemplates = templates
 }
 
 // CompareConditions recursively compares two maps to determine if an event satisfies given conditions.

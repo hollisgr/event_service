@@ -14,7 +14,7 @@ import (
 type Executor struct {
 }
 
-func NewExecutor() executor_interface.Executor {
+func NewDefaultExecutor() executor_interface.Executor {
 	e := Executor{}
 	return &e
 }

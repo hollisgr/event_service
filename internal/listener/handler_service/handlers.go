@@ -63,12 +63,17 @@ func (h *handler_service) GetPipelineTemplates(c *gin.Context) {
 // Binds JSON payload to PipelineTemplateDTO, validates, and stores it.
 // Responds with the saved pipeline template's ID on success, or bad request error on validation/database issues.
 func (h *handler_service) SavePipelineTemplate(c *gin.Context) {
-	var newTemplate pipeline.PipelineTemplateDTO
+	var newTemplate pipeline.PipelineTemplate
 	err := c.BindJSON(&newTemplate)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"status": "bad request", "message": "req body data is incorrect"})
 		return
 	}
+
+	if newTemplate.ExecuteType == "" {
+		newTemplate.ExecuteType = "default"
+	}
+
 	id, err := h.storage.PipelineTemplateSave(context.Background(), newTemplate)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"status": "bad request", "message": err})

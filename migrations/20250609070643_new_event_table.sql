@@ -32,6 +32,7 @@ CREATE TABLE pipelines (
 CREATE TABLE pipeline_templates (
     id SERIAL PRIMARY KEY,
     event_name TEXT,
+    execute_type TEXT DEFAULT 'default',
     conditions JSONB,
     query JSONB,
     exit_pipeline_name TEXT,
@@ -39,7 +40,6 @@ CREATE TABLE pipeline_templates (
     execute_delay INTEGER,
     is_active BOOLEAN
 );
-
 
 -- +goose StatementEnd
 
