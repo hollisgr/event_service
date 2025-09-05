@@ -1,0 +1,28 @@
+name: deploy
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: prod
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Environment Var Init
+      run: |
+        echo "
+          DB_NAME=${{secrets.PSQL_DBNAME}}
+          DB_USER=${{secrets.PSQL_USERNAME}}
+          DB_PASSWORD=${{secrets.PSQL_PASSWORD}}
+          S_HOST=${{secrets.S_HOST}}
+          S_TOKEN=${{secrets.S_TOKEN}}
+          CHECK_EVENTS_SEC=10
+          SEND_MSG_SEC=5
+          JWT_SECRET_KEY=${{secrets.JWT_SECRET_KEY}}" > .env
+    - name: create docker compose config
+      run: |
+        docker compose up -d --build
+        ~/go/bin/goose -dir migrations postgres "postgresql://${{secrets.PSQL_USERNAME}}:${{secrets.PSQL_PASSWORD}}@${{secrets.PSQL_HOST}}:${{secrets.PSQL_DBPORT}}/${{secrets.PSQL_DBNAME}}?sslmode=disable" up

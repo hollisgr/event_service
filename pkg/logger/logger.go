@@ -41,7 +41,7 @@ func GetLogger() *Logger {
 	return &Logger{e}
 }
 
-func init() {
+func Init() {
 	l := logrus.New()
 	l.SetReportCaller(true)
 	l.Formatter = &logrus.TextFormatter{
