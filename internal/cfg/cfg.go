@@ -15,8 +15,8 @@ type Cfg struct {
 		SendMessageTimeOutSec int    `env:"SEND_MSG_SEC"`
 	}
 	Listen struct {
-		BindIP string `env:"BIND_IP"`
-		Port   string `env:"LISTEN_PORT"`
+		BindIP string `env:"BIND_IP" env-default:"0.0.0.0"`
+		Port   string `env:"LISTEN_PORT" env-default:"8080"`
 	}
 	Postgresql struct {
 		Host     string `env:"PSQL_HOST"`
@@ -35,7 +35,6 @@ func GetConfig() *Cfg {
 		logger := logger.GetLogger()
 		logger.Infoln("read app configuration")
 		instance = &Cfg{}
-		// err := cleanenv.ReadConfig(".env", instance)
 		err := cleanenv.ReadEnv(instance)
 		if err != nil {
 			help, _ := cleanenv.GetDescription(instance, nil)
