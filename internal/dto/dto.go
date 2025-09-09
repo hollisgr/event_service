@@ -1,8 +1,11 @@
 package dto
 
-import "event_service/internal/models/pipeline"
+import (
+	"event_service/internal/models/event"
+	"event_service/internal/models/message"
+)
 
-type PipelineDTO struct {
-	Pipeline         pipeline.Pipeline
-	PipelineTemplate pipeline.PipelineTemplate
+type FromDbToMessagesDTO struct {
+	Message message.Message
+	Event   event.Event
 }
