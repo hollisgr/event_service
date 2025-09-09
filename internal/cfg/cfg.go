@@ -35,8 +35,8 @@ func GetConfig() *Cfg {
 		logger := logger.GetLogger()
 		logger.Infoln("read app configuration")
 		instance = &Cfg{}
-		err := cleanenv.ReadConfig(".env", instance)
-		// err := cleanenv.ReadEnv(instance)
+		// err := cleanenv.ReadConfig(".env", instance)
+		err := cleanenv.ReadEnv(instance)
 		if err != nil {
 			help, _ := cleanenv.GetDescription(instance, nil)
 			logger.Infoln(help)
