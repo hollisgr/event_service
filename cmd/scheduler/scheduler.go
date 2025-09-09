@@ -6,7 +6,6 @@ import (
 	"event_service/internal/db"
 	"event_service/internal/pipeline"
 	"event_service/internal/scheduler"
-	"event_service/pkg/logger"
 	"event_service/pkg/postgres"
 	"log"
 	"os"
@@ -16,8 +15,6 @@ import (
 
 func main() {
 	cfg := cfg.GetConfig()
-
-	logger := logger.GetLogger()
 
 	pgxPool, err := postgres.NewClient(context.Background(), 3, *cfg)
 
@@ -29,10 +26,10 @@ func main() {
 	err = pgxPool.Ping(context.Background())
 
 	if err != nil {
-		logger.Fatalln(err)
+		log.Fatalln(err)
 	}
 
-	storage := db.NewStorage(pgxPool, logger)
+	storage := db.NewStorage(pgxPool)
 
 	pipelineService := pipeline.NewPipelineService(storage, *cfg)
 
@@ -41,7 +38,7 @@ func main() {
 	err = s.InitScheduler()
 
 	if err != nil {
-		logger.Fatalln(err)
+		log.Fatal(err)
 	}
 
 	s.StartScheduler()

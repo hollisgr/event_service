@@ -5,7 +5,6 @@ import (
 	"event_service/internal/cfg"
 	"event_service/internal/db"
 	"event_service/internal/listener/handler_service"
-	"event_service/pkg/logger"
 	"event_service/pkg/postgres"
 	"log"
 	"os"
@@ -17,8 +16,6 @@ import (
 )
 
 func main() {
-	logger := logger.GetLogger()
-
 	cfg := cfg.GetConfig()
 
 	r := gin.Default()
@@ -28,16 +25,16 @@ func main() {
 	pgxPool, err := postgres.NewClient(context.Background(), 3, *cfg)
 
 	if err != nil {
-		logger.Fatalln(err)
+		log.Fatalln(err)
 	}
 
 	err = pgxPool.Ping(context.Background())
 
 	if err != nil {
-		logger.Fatalln(err)
+		log.Fatalln(err)
 	}
 
-	storage := db.NewStorage(pgxPool, logger)
+	storage := db.NewStorage(pgxPool)
 
 	handler := handler_service.NewHandler(storage, cfg, validate)
 

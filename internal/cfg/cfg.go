@@ -1,7 +1,7 @@
 package cfg
 
 import (
-	"event_service/pkg/logger"
+	"log"
 	"sync"
 
 	"github.com/ilyakaznacheev/cleanenv"
@@ -32,14 +32,13 @@ var once sync.Once
 
 func GetConfig() *Cfg {
 	once.Do(func() {
-		logger := logger.GetLogger()
-		logger.Infoln("read app configuration")
+		log.Println("read app configuration")
 		instance = &Cfg{}
-		err := cleanenv.ReadEnv(instance)
+		err := cleanenv.ReadConfig(".env", instance)
 		if err != nil {
 			help, _ := cleanenv.GetDescription(instance, nil)
-			logger.Infoln(help)
-			logger.Fatal(err)
+			log.Println(help)
+			log.Fatalln(err)
 		}
 	})
 	return instance

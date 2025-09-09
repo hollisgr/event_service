@@ -1,13 +1,13 @@
-name: deploy
+name: deploy_without_logrus
 
 on:
   push:
-    branches: [ "dev" ]
+    branches: [ "del_logrus" ]
 
 jobs:
   deploy:
     name: Deploy
-    runs-on: dev-server
+    runs-on: prod
 
     steps:
     - uses: actions/checkout@v4

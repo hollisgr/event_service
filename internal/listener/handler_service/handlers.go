@@ -7,7 +7,6 @@ import (
 	"event_service/internal/listener/handler_interface"
 	"event_service/internal/models/event"
 	"event_service/internal/models/pipeline"
-	"event_service/pkg/logger"
 	"fmt"
 	"net/http"
 
@@ -16,7 +15,6 @@ import (
 )
 
 type handler_service struct {
-	logger   *logger.Logger
 	storage  storage.Storage
 	cfg      *cfg.Cfg
 	validate *validator.Validate
@@ -27,7 +25,6 @@ type handler_service struct {
 // Returns a concrete implementation of the Handler interface.
 func NewHandler(s storage.Storage, cfg *cfg.Cfg, validate *validator.Validate) handler_interface.Handler {
 	return &handler_service{
-		logger:   logger.GetLogger(),
 		storage:  s,
 		cfg:      cfg,
 		validate: validate,

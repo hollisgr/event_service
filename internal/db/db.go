@@ -6,7 +6,6 @@ import (
 	"event_service/internal/db/storage"
 	"event_service/internal/models/event"
 	"event_service/internal/models/pipeline"
-	"event_service/pkg/logger"
 	"event_service/pkg/postgres"
 	"fmt"
 	"strings"
@@ -14,7 +13,6 @@ import (
 
 type repository struct {
 	client postgres.Client
-	logger *logger.Logger
 }
 
 func formatQuery(q string) string {
@@ -23,10 +21,9 @@ func formatQuery(q string) string {
 
 // NewStorage creates a new instance of repository implementing the storage.Storage interface.
 // It takes a PostgreSQL client and a logger as parameters and returns a pointer to the repository struct.
-func NewStorage(client postgres.Client, logger *logger.Logger) storage.Storage {
+func NewStorage(client postgres.Client) storage.Storage {
 	return &repository{
 		client: client,
-		logger: logger,
 	}
 }
 
