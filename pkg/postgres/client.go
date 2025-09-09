@@ -3,7 +3,6 @@ package postgres
 import (
 	"context"
 	"event_service/internal/cfg"
-	"event_service/pkg/utils"
 	"fmt"
 	"log"
 	"time"
@@ -21,7 +20,7 @@ type Client interface {
 func NewClient(ctx context.Context, maxAttempts int, cfg cfg.Cfg) (pool *pgxpool.Pool, err error) {
 	dsn := fmt.Sprintf("postgresql://%s:%s@%s:%s/%s", cfg.Postgresql.Username, cfg.Postgresql.Password, cfg.Postgresql.Host, cfg.Postgresql.Port, cfg.Postgresql.Database)
 
-	err = utils.DoWithTries(func() error {
+	err = DoWithTries(func() error {
 		ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 		defer cancel()
 
@@ -29,11 +28,22 @@ func NewClient(ctx context.Context, maxAttempts int, cfg cfg.Cfg) (pool *pgxpool
 		if err != nil {
 			return err
 		}
-
 		return nil
 	}, maxAttempts, 5*time.Second)
 	if err != nil {
 		log.Fatal("error do with tries postgresql")
 	}
 	return pool, nil
+}
+
+func DoWithTries(fn func() error, attemtps int, delay time.Duration) (err error) {
+	for attemtps > 0 {
+		if err = fn(); err != nil {
+			time.Sleep(delay)
+			attemtps--
+			continue
+		}
+		return nil
+	}
+	return
 }
