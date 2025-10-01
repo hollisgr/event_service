@@ -1,5 +1,4 @@
 ---
-
 services:
   event_listener:
     container_name: el-app
@@ -18,7 +17,7 @@ services:
     depends_on:
       psql_es:
         condition: service_healthy
-    ports: 
+    ports:
       - "8181:8080"
 
   scheduler:
@@ -39,7 +38,7 @@ services:
     depends_on:
       psql_es:
         condition: service_healthy
-    ports: 
+    ports:
       - "8001:8080"
 
   psql_es:
@@ -55,6 +54,10 @@ services:
       timeout: 5s
       retries: 5
     volumes:
-      - ./data:/var/lib/postgresql/data
+      - psql_es_storage:/var/lib/postgresql/data
     ports:
       - "25432:5432"
+
+volumes:
+  psql_es_storage:
+    driver: local
